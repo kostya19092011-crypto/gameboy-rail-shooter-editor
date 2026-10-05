@@ -37,8 +37,10 @@ class LevelEditorApp(tk.Tk):
         self.geometry("980x620")
         self.minsize(860, 560)
         self.project = {**DEFAULT_PROJECT}
-        self.segment_types = ["empty", "enemy", "pickup", "boss"]
         self.selected_segment_index = 0
+        self.segment_types = ["empty", "enemy", "pickup", "boss"]
+        self.segment_type_var = tk.StringVar()
+        self.segment_label_var = tk.StringVar()
 
         self._build_ui()
         self._load_demo_project()
@@ -88,7 +90,18 @@ class LevelEditorApp(tk.Tk):
         ttk.Button(stage_buttons, text="Add Pickup", command=lambda: self._add_segment("pickup")).pack(side="left", padx=(0, 6))
         ttk.Button(stage_buttons, text="Add Boss", command=lambda: self._add_segment("boss")).pack(side="left", padx=(0, 6))
         ttk.Button(stage_buttons, text="Remove Selected", command=self._remove_selected_segment).pack(side="left", padx=(0, 6))
-        ttk.Button(stage_buttons, text="Clear", command=lambda: self._add_segment("empty")).pack(side="left")
+        ttk.Button(stage_buttons, text="Apply Selected", command=self._apply_selected_segment).pack(side="left")
+
+        segment_group = ttk.LabelFrame(left, text="Selected segment", padding=8)
+        segment_group.grid(row=21, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+
+        ttk.Label(segment_group, text="Type").grid(row=0, column=0, sticky="w")
+        self.segment_type_combo = ttk.Combobox(segment_group, textvariable=self.segment_type_var, values=self.segment_types, state="readonly", width=18)
+        self.segment_type_combo.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+
+        ttk.Label(segment_group, text="Label").grid(row=1, column=0, sticky="w", pady=(8, 0))
+        self.segment_label_entry = ttk.Entry(segment_group, textvariable=self.segment_label_var, width=18)
+        self.segment_label_entry.grid(row=1, column=1, sticky="ew", padx=(8, 0), pady=(8, 0))
 
         right_top = ttk.Frame(right)
         right_top.pack(fill="x", pady=(0, 12))
@@ -104,7 +117,7 @@ class LevelEditorApp(tk.Tk):
                 "- pickup = бонус\n"
                 "- boss = босс\n"
                 "- empty = пустой участок\n\n"
-                "Программа генерирует проект в JSON и сохраняет .gb ROM."
+                "Выбирайте сегмент на дорожке, меняйте тип и сохраняйте проект."
             ),
             justify="left",
             wraplength=320,
@@ -120,6 +133,7 @@ class LevelEditorApp(tk.Tk):
         for key, entry in self.entries.items():
             entry.delete(0, tk.END)
             entry.insert(0, str(self.project.get(key, "")))
+        self._sync_selected_segment_controls()
         self._render_segments()
 
     def _load_demo_project(self):
@@ -139,6 +153,7 @@ class LevelEditorApp(tk.Tk):
                 {"type": "enemy", "label": "E5"},
             ],
         }
+        self.selected_segment_index = 0
         self._apply_project_to_form()
         self.export_status.set("Demo loaded")
 
@@ -180,7 +195,7 @@ class LevelEditorApp(tk.Tk):
             }.get(segment.get("type", "empty"), "#d6d6d6")
 
             self.segment_canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="#333333", width=2)
-            label = segment.get("label") or segment.get("type", "")[0].upper() if segment.get("type") else ""
+            label = segment.get("label") or (segment.get("type", "")[:1].upper() if segment.get("type") else "")
             self.segment_canvas.create_text((x0 + x1) / 2, (y0 + y1) / 2, text=label, font=("Arial", 11, "bold"))
 
             if idx == self.selected_segment_index:
@@ -195,22 +210,55 @@ class LevelEditorApp(tk.Tk):
         index = int((event.x - 20) // 52)
         if 0 <= index < len(segments):
             self.selected_segment_index = index
+            self._sync_selected_segment_controls()
             self._render_segments()
+
+    def _sync_selected_segment_controls(self):
+        segments = self.project.get("segments", [])
+        if not segments:
+            self.segment_type_var.set("empty")
+            self.segment_label_var.set("")
+            return
+
+        if 0 <= self.selected_segment_index < len(segments):
+            segment = segments[self.selected_segment_index]
+            self.segment_type_var.set(segment.get("type", "empty"))
+            self.segment_label_var.set(segment.get("label", ""))
+        else:
+            self.selected_segment_index = 0
+            segment = segments[0]
+            self.segment_type_var.set(segment.get("type", "empty"))
+            self.segment_label_var.set(segment.get("label", ""))
+
+    def _apply_selected_segment(self):
+        segments = self.project.get("segments", [])
+        if not segments or not (0 <= self.selected_segment_index < len(segments)):
+            return
+
+        segment = segments[self.selected_segment_index]
+        segment["type"] = self.segment_type_var.get() or "empty"
+        segment["label"] = self.segment_label_var.get().strip() or {
+            "empty": "",
+            "enemy": f"E{self.selected_segment_index + 1}",
+            "pickup": "P",
+            "boss": "B",
+        }.get(segment["type"], "")
+        self.project["segments"] = segments
+        self._render_segments()
 
     def _add_segment(self, segment_type: str):
         segments = self.project.get("segments", [])
-        if segment_type == "empty":
-            label = ""
-        elif segment_type == "enemy":
-            label = f"E{len(segments) + 1}"
-        elif segment_type == "pickup":
-            label = "P"
-        else:
-            label = "B"
+        label = {
+            "empty": "",
+            "enemy": f"E{len(segments) + 1}",
+            "pickup": "P",
+            "boss": "B",
+        }.get(segment_type, "")
 
         segments.append({"type": segment_type, "label": label})
         self.project["segments"] = segments
         self.selected_segment_index = len(segments) - 1
+        self._sync_selected_segment_controls()
         self._render_segments()
 
     def _remove_selected_segment(self):
@@ -220,7 +268,11 @@ class LevelEditorApp(tk.Tk):
         if 0 <= self.selected_segment_index < len(segments):
             del segments[self.selected_segment_index]
             self.project["segments"] = segments
-            self.selected_segment_index = max(0, min(self.selected_segment_index, len(segments) - 1))
+            if not segments:
+                self.selected_segment_index = 0
+            else:
+                self.selected_segment_index = max(0, min(self.selected_segment_index, len(segments) - 1))
+            self._sync_selected_segment_controls()
             self._render_segments()
 
     def _save_project(self):
