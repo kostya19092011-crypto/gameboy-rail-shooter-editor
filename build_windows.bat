@@ -1,16 +1,1 @@
-@echo off
-setlocal
-
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install -r build_requirements.txt
-
-pyinstaller --onefile --windowed --name "GameBoy Rail Shooter Editor" run_editor.py
-
-if exist dist\GameBoy Rail Shooter Editor.exe (
-    echo Build complete: dist\GameBoy Rail Shooter Editor.exe
-) else (
-    echo Build failed. Check PyInstaller output.
-)
-
-pause
+@echo off\nsetlocal\n\necho ========================================\necho Game Boy Rail Shooter Editor - Build Script\necho ========================================\necho.\n\necho Installing Python dependencies...\npython -m pip install --upgrade pip > nul 2>&1\npython -m pip install -r requirements.txt > nul 2>&1\npython -m pip install -r build_requirements.txt > nul 2>&1\n\necho Building executable...\npyinstaller --onefile --windowed --name \"GameBoy Rail Shooter Editor\" run_editor.py\n\necho.\necho ========================================\nif exist dist\\\"GameBoy Rail Shooter Editor.exe\" (\n    echo [SUCCESS] Build complete!\n    echo Executable: dist\\\"GameBoy Rail Shooter Editor.exe\"\n) else (\n    echo [ERROR] Build failed. Check PyInstaller output above.\n)\necho ========================================\necho.\n\npause\n
