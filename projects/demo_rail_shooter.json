@@ -1,0 +1,12 @@
+{
+  "title": "RAIL RUNNER",
+  "difficulty": "normal",
+  "enemy_count": 18,
+  "player_speed": 4,
+  "boss": "specter",
+  "theme": "sunset",
+  "background_color": "#F7B267",
+  "music": "neon-ride",
+  "scroll_speed": 8,
+  "boss_health": 16
+}
