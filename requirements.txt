@@ -1,0 +1,11 @@
+tkinter
+
+
+# Optional: for richer future development
+# pygame-ce>=2.5.0
+
+
+# Game Boy ROM creator uses only standard library
+# No extra dependencies required.
+
+
